@@ -1,7 +1,35 @@
-FROM node:14.8.0-alpine
-RUN npm install -g npm@6.14.7
-RUN mkdir -p /var/www/user
-WORKDIR /var/www/user
-ADD . /var/www/user
-RUN npm install
-CMD npm run build && npm run start:prod
+FROM node:18-alpine AS dependencies
+WORKDIR /workspace
+# COPY package.json yarn.lock ./
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+# RUN yarn
+RUN \
+  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
+FROM node:18-alpine AS build
+WORKDIR /workspace
+COPY --from=dependencies /workspace/node_modules ./node_modules
+COPY . .
+RUN yarn run build
+
+FROM node:18-alpine AS deploy
+ENV NODE_ENV production
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nestjs
+
+WORKDIR /workspace
+# COPY --from=build /workspace/public ./public
+COPY --from=build --chown=nestjs:nodejs /workspace/dist ./dist
+COPY --from=build --chown=nestjs:nodejs /workspace/node_modules ./node_modules
+# COPY --from=build --chown=nestjs:nodejs /workspace/.next/static ./.next/static
+# COPY --from=build /workspace/.next/standalone ./
+# COPY --from=build /workspace/.next/static ./.next/static
+USER nestjs
+RUN echo $(ls)
+EXPOSE 3005
+ENV PORT 3005
+# ENTRYPOINT ["yarn","start:prod"]
+CMD [ "node", "dist/main.js" ]
