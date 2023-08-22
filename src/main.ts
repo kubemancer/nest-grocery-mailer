@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.createMicroservice(AppMailerModule, {
     transport: Transport.TCP,
     options: {
-      host: 'nest-mailer-svc',
+      host: 'localhost',
       port: new ConfigService().get('port'),
     },
   } as TcpOptions);
