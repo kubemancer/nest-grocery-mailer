@@ -23,8 +23,8 @@ RUN adduser --system --uid 1001 nestjs
 WORKDIR /workspace
 COPY --from=build --chown=nestjs:nodejs /workspace/dist ./dist
 COPY --from=build --chown=nestjs:nodejs /workspace/node_modules ./node_modules
-EXPOSE 3003
-ENV PORT 3003
+EXPOSE 3004
+ENV PORT 3004
 USER nestjs
 CMD [ "node", "dist/main.js" ]
 
